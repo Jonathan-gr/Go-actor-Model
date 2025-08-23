@@ -10,16 +10,18 @@ type Player struct {
 	HP int
 }
 
-func newPlayer() actor.Receiver {
-	return &Player{}
+func newPlayer(hp int) actor.Producer {
+	return func() actor.Receiver {
+		return &Player{HP: hp}
+	}
 }
 
-func (p *Player) Receive(c *actor.Context) {}
-
+func (p *Player) Receive(ctx *actor.Context) {
+}
 func main() {
 	e, err := actor.NewEngine(actor.NewEngineConfig())
 	if err != nil {
-		log.Fatalf("failed to create actor engine: %v", err)
+		log.Fatal(err)
 	}
-	e.Spawn(newPlayer, "player")
+	e.Spawn(newPlayer(100), "player1")
 }
