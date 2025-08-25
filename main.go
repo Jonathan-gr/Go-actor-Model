@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"time"
@@ -12,7 +11,9 @@ import (
 type Inventory struct {
 	Bottles int
 }
-
+type myEvent struct {
+	Info string
+}
 type Player struct {
 	HP           int
 	inverntoryID *actor.PID
@@ -37,23 +38,29 @@ func (i *Inventory) Receive(c *actor.Context) {
 	switch msg := c.Message().(type) {
 	case actor.Started:
 		fmt.Println("Inventory started with bottles:", i.Bottles)
+		c.Engine().Subscribe(c.PID())
 	case actor.Stopped:
 		fmt.Println("Inventory stopped")
 	case drinkBottle:
 		fmt.Println("Drinking bottle, healing for", msg.Amount)
+	case myEvent:
+		fmt.Println("Inventory received event:", msg.Info)
 	}
 }
 
 func (p *Player) Receive(c *actor.Context) {
-	switch c.Message().(type) {
+	switch msg := c.Message().(type) {
 	case actor.Started:
 		fmt.Println("Player started with HP:", p.HP)
 		// Spawn an inventory actor as a child
 		p.inverntoryID = c.SpawnChild(newInventory(3), "inventory")
+		c.Engine().Subscribe(c.PID())
 	case actor.Stopped:
 		fmt.Println("Player stopped")
 	case drinkBottle:
 		c.Forward(p.inverntoryID)
+	case myEvent:
+		fmt.Println("Received event message", msg.Info)
 	}
 }
 func main() {
@@ -65,7 +72,8 @@ func main() {
 
 	msg := drinkBottle{Amount: 10}
 	e.Send(pid, msg)
+	time.Sleep(1 * time.Second)
+	e.BroadcastEvent(myEvent{Info: "Game Started"})
+	time.Sleep(1 * time.Second)
 
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
-	<-e.PoisonCtx(ctx, pid).Done()
 }
